@@ -1,0 +1,157 @@
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class Main {
+
+    // Singleton Pattern: ScheduleManager Class
+    public static class ScheduleManager {
+        private static ScheduleManager instance;
+        private List<Task> tasks;
+
+        private ScheduleManager() {
+            tasks = new ArrayList<>();
+        }
+
+        public static ScheduleManager getInstance() {
+            if (instance == null) {
+                instance = new ScheduleManager();
+            }
+            return instance;
+        }
+
+        public void addTask(Task task) throws Exception {
+            for (Task t : tasks) {
+                if (task.conflictsWith(t)) {
+                    throw new Exception("Error: Task conflicts with existing task \"" + t.getDescription() + "\".");
+                }
+            }
+            tasks.add(task);
+            Collections.sort(tasks);
+            TaskNotifier.getInstance().notifyObservers(task);
+        }
+
+        public void removeTask(String description) throws Exception {
+            boolean removed = tasks.removeIf(task -> task.getDescription().equals(description));
+            if (!removed) {
+                throw new Exception("Error: Task not found.");
+            }
+        }
+
+        public List<Task> viewTasks() {
+            return tasks;
+        }
+    }
+
+    // Factory Pattern: TaskFactory Class
+    public static class TaskFactory {
+        public static Task createTask(String description, String startTime, String endTime, String priority) {
+            return new Task(description, startTime, endTime, priority);
+        }
+    }
+
+    // Observer Pattern: TaskNotifier and TaskObserver Classes
+    public static class TaskNotifier {
+        private static TaskNotifier instance;
+        private List<TaskObserver> observers;
+
+        private TaskNotifier() {
+            observers = new ArrayList<>();
+        }
+
+        public static TaskNotifier getInstance() {
+            if (instance == null) {
+                instance = new TaskNotifier();
+            }
+            return instance;
+        }
+
+        public void addObserver(TaskObserver observer) {
+            observers.add(observer);
+        }
+
+        public void notifyObservers(Task task) {
+            for (TaskObserver observer : observers) {
+                observer.update(task);
+            }
+        }
+    }
+
+    public interface TaskObserver {
+        void update(Task task);
+    }
+
+    // Task Class
+    public static class Task implements Comparable<Task> {
+        private String description;
+        private String startTime;
+        private String endTime;
+        private String priority;
+
+        public Task(String description, String startTime, String endTime, String priority) {
+            this.description = description;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.priority = priority;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getStartTime() {
+            return startTime;
+        }
+
+        public String getEndTime() {
+            return endTime;
+        }
+
+        public String getPriority() {
+            return priority;
+        }
+
+        public boolean conflictsWith(Task other) {
+            return !(this.endTime.compareTo(other.startTime) <= 0 || this.startTime.compareTo(other.endTime) >= 0);
+        }
+
+        @Override
+        public int compareTo(Task other) {
+            return this.startTime.compareTo(other.startTime);
+        }
+
+        @Override
+        public String toString() {
+            return startTime + " - " + endTime + ": " + description + " [" + priority + "]";
+        }
+    }
+
+    // Main Method to Demonstrate the Functionality
+    public static void main(String[] args) {
+        // Demonstrate ScheduleManager functionality
+        try {
+            ScheduleManager manager = ScheduleManager.getInstance();
+            TaskNotifier notifier = TaskNotifier.getInstance();
+            notifier.addObserver(task -> System.out.println("New task added: " + task));
+
+            Task task1 = TaskFactory.createTask("Morning Exercise", "07:00", "08:00", "High");
+            manager.addTask(task1);
+
+            Task task2 = TaskFactory.createTask("Team Meeting", "09:00", "10:00", "Medium");
+            manager.addTask(task2);
+
+            manager.viewTasks().forEach(System.out::println);
+
+            manager.removeTask("Morning Exercise");
+            manager.viewTasks().forEach(System.out::println);
+
+            Task task3 = TaskFactory.createTask("Lunch Break", "12:00", "13:00", "Low");
+            manager.addTask(task3);
+            manager.viewTasks().forEach(System.out::println);
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+
